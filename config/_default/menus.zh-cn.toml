@@ -1,0 +1,35 @@
+  [[main]]
+  name = "主页"
+  identifier = "home"
+  weight = 100
+  url = "/"
+
+  [[main]]
+  name = "文章"
+  weight = 200
+  identifier = "posts"
+  url = "/post/"
+
+  [[main]]
+  name = "简历"
+  weight = 300
+  identifier = "portfolio"
+  url = "/portfolio/"
+
+  [[main]]
+  name = "关于我"
+  weight = 400
+  identifier = "about"
+  url = "/about/"
+
+  [[main]]
+  name = "联系"
+  weight = 500
+  identifier = "contact"
+  url = "/contact/"
+
+  [[footer]]
+  name = "imprint"
+  weight = 1
+  identifier = "imprint"
+  url = "/imprint/"
