@@ -1,9 +1,9 @@
 
-title = "I'm Jane Doe"
+title = "I'm Tinalangz"
 author = "Jane Doe"
 #copyright = "2020-2022"
 description = "Call me Jane"
-profilePicture = "images/profile.jpg"
+profilePicture = "images/主页头像.jpeg"
 keywords = ""
 favicon = "favicons/"
 # example ["css/custom.css"]
@@ -52,21 +52,37 @@ use = "katex"  # options: "katex", "mathjax". default is "katex".
 ## Social links
 # use 'fab' when brand icons, use 'fas' when standard solid icons.
 [[socialIcons]]
-icon = "fab fa-linkedin"
-title = "Linkedin"
-url = "https://de.linkedin.com/"
+icon = "fab fa-brands fa-bilibili"
+title = "bilibili"
+url = "https://space.bilibili.com/1910032766?spm_id_from=333.1007.0.0"
 
 [[socialIcons]]
 icon = "fab fa-github"
 title = "GitHub"
-url = "https://github.com/lxndrblz/anatole/"
+url = "https://github.com/tianlangz"
 
 [[socialIcons]]
-icon = "fab fa-instagram"
-title = "instagram"
-url = "https://www.instagram.com/"
+icon = "fab fa-brands fa-gitlab"
+title = "Gitlab"
+url = "https://gitlab.com/tianlangz"
+
+[[socialIcons]]
+icon = "fab fa-brands fa-steam"
+title = "steam"
+url = "https://steamcommunity.com/profiles/76561198428670521/"
+
+[[socialIcons]]
+icon = "fab fa-d-and-d"
+title = "CSDN"
+url = "https://blog.csdn.net/TianLangZ"
 
 [[socialIcons]]
 icon = "fas fa-envelope"
 title = "e-mail"
-url = "mailto:mail@example.com"
+url = "https://mail.qq.com/cgi-bin/frame_html?sid=RryfvW32kcaHB189&r=37c431417c0209ba54bfdf2d9ce32a35"
+
+# [[socialIcons]]
+# icon = "fad fa-monkey"
+# title = "CSDN"
+# url = "https://blog.csdn.net/TianLangZ"
+

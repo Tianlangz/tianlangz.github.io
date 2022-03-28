@@ -1,7 +1,7 @@
-baseURL = "https://example.com"
+baseURL = "https://tianlangz.top"
 languageCode = "zh-cn"
 DefaultContentLanguage = "zh-cn"
-title = "Website of Jane Doe"
+title = "Website of Tianlangz"
 
 # theme as git submodule
 theme = "anatole"
