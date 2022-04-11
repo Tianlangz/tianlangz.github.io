@@ -28,8 +28,14 @@
   identifier = "contact"
   url = "/contact/"
 
+  # [[footer]]
+  # name = "imprint"
+  # weight = 1
+  # identifier = "imprint"
+  # url = "/imprint/"
+
   [[footer]]
-  name = "imprint"
-  weight = 1
-  identifier = "imprint"
-  url = "/imprint/"
+  name = "辽ICP备2202003343"
+  weight = 2
+  identifier = "beian"
+  url = "http://beian.miit.gov.cn/"
