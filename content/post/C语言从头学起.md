@@ -2,9 +2,9 @@
 author: Hugo Authors
 title: C语言从头开始
 date: 2021-08-14
-description: A brief guide to how to setup C语言
+description:  C语言
 series:
-  - series-setup
+  - C语言
 
 draft: true
 ---
