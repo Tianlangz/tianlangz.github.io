@@ -22,11 +22,11 @@
   identifier = "about"
   url = "/about/"
 
-  [[main]]
-  name = "联系"
-  weight = 500
-  identifier = "contact"
-  url = "/contact/"
+ # [[main]]
+ # name = "联系"
+ # weight = 500
+ # identifier = "contact"
+ # url = "/contact/"
 
   # [[footer]]
   # name = "imprint"
