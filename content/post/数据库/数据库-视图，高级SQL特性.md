@@ -183,5 +183,5 @@ series:
   ## 更改索引名
     更改索引名的方式:
    ```sql
-   ALTER INDEX <旧索引名> RENAME TO <新索引名>
+   ALTER INDEX <prod_name_ind> RENAME TO <prod_name_inc>
    ```
