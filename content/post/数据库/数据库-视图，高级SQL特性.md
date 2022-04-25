@@ -41,6 +41,13 @@ series:
  FROM ProductCustomers
  WHERE prod_id = 'RGAN01';
  ```
+ ### 在对视图进行插入和修改时仍然保证建立视图时做的约束。
+
+  ```sql
+  WITH CHECK OPTION
+  ```
+  在建立完视图后加入这句话保证你建立此视图时的约束。
+
 
 # 约束
 
