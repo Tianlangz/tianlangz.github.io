@@ -44,7 +44,12 @@ series:
  ### 在对视图进行插入和修改时仍然保证建立视图时做的约束。
 
   ```sql
-  WITH CHECK OPTION
+    CREATE VIEW ProductCustomers AS
+    SELECT cust_name, cust_contact, prod_id
+    FROM Customers, Orders, OrderItems
+    WHERE Customers.cust_id = Order.cust_id
+    AND OrderItems.order_num = Orders.order_num
+    WITH CHECK OPTION;
   ```
   在建立完视图后加入这句话保证你建立此视图时的约束。
 
