@@ -41,7 +41,7 @@ series:
  FROM ProductCustomers
  WHERE prod_id = 'RGAN01';
  ```
- ### 在对视图进行插入和修改时仍然保证建立视图时做的约束。
+ ### 在对视图进行插入和修改时仍然保证建立视图时做的约束   WITH CHECK OPTION。
 
   ```sql
     CREATE VIEW ProductCustomers AS
