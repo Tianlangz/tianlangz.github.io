@@ -198,3 +198,8 @@ series:
    ```sql
    ALTER INDEX <prod_name_ind> RENAME TO <prod_name_inc>
    ```
+
+  ## 删除索引
+   ```sql
+   DROP INDEX Products.prod_name_ind
+   ```
