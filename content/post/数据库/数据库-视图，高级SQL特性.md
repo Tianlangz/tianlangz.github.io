@@ -201,5 +201,10 @@ series:
 
   ## 删除索引
    ```sql
-   DROP INDEX Products.prod_name_ind
+   DROP INDEX Products.prod_name_ind;
    ```
+   这是旧语法，在新版本中可能会移除。我介绍一下新的语法规则:
+   ```sql
+    DROP INDEX prod_name_ind ON Products;
+   ```
+   `INDEX`后接索引名，`ON`后跟表明。
