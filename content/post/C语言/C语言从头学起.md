@@ -1,43 +1,29 @@
 ---
 author: Hugo Authors
 title: C语言从头开始
-date: 2021-08-14
+date: 2021-05-04
 description:  C语言
 series:
   - C语言
 
-draft: true
 ---
 
-我们应该从头开始学习C语言，这还是一个很重要的东西
+我们应该从头开始学习C语言，C语言是一个很基础性质的语言，他将带领你进入编码的世界。
+C语言的编码方式
 
 <!--more-->
 
-As a first step we need to add series as a taxonomy. We can do this by editing the `config.toml`.  
-Note: We always need to define the existing taxonomies as well.
+我们从小就学会了自己的母语用来讲述自己要做的某些事情，在计算机的世界中只有我们学会了它的语言用来讲述我们要做的某些事情，而计算机能听懂的语言就叫做`编程语言(Progr)`。
 
-```toml
-[taxonomies]
-    category = "categories"
-    series = "series"
-    tag = "tags"
-```
+想要学习编程必须了解二进制，它是计算机处理数据的基础。
 
-Now we have the series enabled, the next thing we need to do is add the series name in the FrontMatter.
-For our example we'll use this post and the next part.
+谈到计算机编码问题，我们就不得不提到`ASCII码`，`ASCII码是“American Standard Code for Information Interchange”的缩写，翻译过来是“美国信息交换标准代码”`看名字就知道这个代码是给美国人使用的通用代码，并没有考虑其他扩展语言。
 
-As you can see we've set the series to `series-setup`. We also do the same in the next parts of the series.  
-This end results should be a Front Matter that looks similar to this:
+C语言的编码方式并不是一个以纯`ASCII码`来编码的语言:
+ - 对于`char`类型的窄字符，使用ASCII，VS使用本地编码，Xcode默认使用UTF-8
+ - 对于`wchar_t`类型的宽字符或宽字符串，使用基于Unicode字符集的UTF-16或者UTF-32编码
 
-```md
----
-author: Hugo Authors
-title: Series Part 1
-date: 2021-08-14
-description: A brief guide to how to setup series part 1
-series:
-  - series-setup
----
-```
-
-Each individual post will now also show the other posts in the series under the `Posts in this Series` heading.
+Unicode使用的三种编码方案
+ - UTF-8：一种变长的编码方案，使用1-6个字节来存储
+ - UTF-32：一种固定长度的编码方案，不管字符编码大小，始终使用4个字节来存储
+ - UTF-16：介于UTF-8和UTF-32之间，使用2个或者4个字节存储，长度即固定也可变
