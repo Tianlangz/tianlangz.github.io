@@ -246,3 +246,34 @@ a VS b: 32
 a VS c: -31
 a VS d: 0
 ```
+
+当然理解数组有一个特别实际的例子
+将数组中的元素按由小到大的顺序输出出来，用冒泡排序法
+
+所谓冒泡排序法，整个排序的过程就像气泡从水中一个一个冒上来，最先上来的是最大的，然后第二个，以此类推，很经典。
+```c
+#include <stdio.h>
+int main()
+{
+    int nums[10], i, j, temp, s;
+    for(i=0;i<10;i++)
+        scanf("%d",&nums[i]);
+    for(i=0;i<10-1;i++)
+    {
+        for(j=0;j<10-1-i;j++)
+        {
+            if(nums[j] > nums[j+1])
+            {
+                temp=nums[j];
+                nums[j]=nums[j+1];
+                nums[j+1]=temp;
+            }
+        }
+    }
+    for(i=0;i<10;i++)
+        printf("%d",nums[i]);
+    printf("\n");
+    return 0;
+}
+```
+可以自己尝试理解一下。
