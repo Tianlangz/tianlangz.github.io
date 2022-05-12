@@ -102,3 +102,54 @@ series:
 |#ifndef|如果宏没有定义则编译以下代码|
 |#elif|如果前面的#if给定的条件不为真，当前条件为真，则编译下面代码|
 |#endif|结束一个#if……#else条件编译块|
+
+
+
+
+# typedef
+ C语言允许为一个数据类型起一个新的别名。
+```
+typedef oldName newName
+```
+oldName 表示数据类型原来的名字 newName 表示数据类型新的名字。
+```c
+typedef int INTEGER;
+INTEGER a, b;
+a = 1;
+b = 2;
+```
+INTEGER a, b;等效于int a, b;。
+
+它还可以给数组、指针、结构体等类型定义别名。
+```c
+typedef char ARRAY20[20];
+```
+表示 ARRAY20 是类型char [20]的别名。它是一个长度为 20 的数组类型。接着可以
+用 ARRAY20 定义数组：
+```c
+ARRAY20 a1, a2, s1, s2;
+```
+它等价于：
+```c
+char a1[20], a2[20], s1[20], s2[20];
+```
+指针
+```c
+typedef int (*PTR_TO_ARR)[4];
+```
+表示 PTR_TO_ARR 是类型int * [4]的别名，它是一个二维数组指针类型。接着可以使用 PTR_TO_ARR 定义二维数组指针：
+```c
+PTR_TO_ARR p1, p2;
+```
+按照类似的写法，还可以为函数指针类型定义别名：
+```c
+typedef int (*PTR_TO_FUNC)(int, int);
+PTR_TO_FUNC pfunc;
+```
+typedef与#define的区别。
+typedef的表现上有些类似于#define，但它和宏替换之间存在一个关键性的区别。正确思考这个问题的方法就是把 typedef 看成一种彻底的“封装”类型，声明之后不能再往里面增加别的东西。他们俩之间有很大的区别：
+1. 可以使用其他类型说明符对宏类型名进行扩展，但对typedef所定义的类型名却不能这样做
+2. 在连续定义几个变量的时候，typedef能够保证定义的所有变量均为同一类型，而#define则无法保证
+
+
+
