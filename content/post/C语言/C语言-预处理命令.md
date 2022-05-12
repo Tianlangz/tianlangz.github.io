@@ -13,6 +13,7 @@ series:
 #if
 #ifdef
 #ifndef
+typedef
 ```
 <!--more-->
 我在以前的章节中经常使用`#include`命令。用它来调用库函数，`这种#号开头的命令称为预处理命令`
