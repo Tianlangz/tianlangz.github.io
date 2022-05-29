@@ -76,3 +76,4 @@ series:
 |== 和 != 高于赋值符|	c = getchar() != EOF|	(c = getchar()) != EOF|	c = (getchar() != EOF)|
 |算术运算符高于位移 运算符|	msb << 4 + lsb|	(msb << 4) + lsb|	msb << (4 + lsb)|
 |逗号运算符在所有运 算符中优先级最低|	i = 1, 2|	i = (1,2)|	(i = 1), 2|
+|赋值运算符返回值|while(a = 0)|while(1)|while(0)|
