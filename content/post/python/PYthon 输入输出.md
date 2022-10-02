@@ -29,7 +29,7 @@ print("resultValue: ", result)
 print("resultType: ", type(result))
 ```
 运行结果示例：
-```python
+```
 Enter a number: 100↙
 Enter another number: 45↙
 aType:  <class 'str'>
@@ -59,7 +59,7 @@ print("resultValue: ", result)
 print("resultType: ", type(result))
 ```
 运行结果：
-```python
+```
 Enter a number: 12.5↙
 Enter another number: 64↙
 aType:  <class 'float'>
@@ -86,7 +86,7 @@ print "resultValue: ", result
 print "resultType: ", type(result)
 ```
 在 Python 2.x 下运行该代码：
-```python
+```
 Enter a number: 45↙
 Enter another number: 100↙
 aType:  <type 'int'>
@@ -100,11 +100,11 @@ resultType:  <type 'int'>
 之前我们使用print()函数时，都只是输出一个变量，但实际上print()函数完全可以输出多个变量，而且它具有更多丰富的功能。
 
 print()函数的详细语法格式：
-```python
+```
 print(value,……,sep = '',end = '\n',file = sys.stdout,flush = False)
 ```
 ```python
-user_name ＝ 'Charlie'
+user_name = 'Charlie'
 user_age = 8
 #同时输出多个变量和字符串
 print("读者名：",user_name,"年龄：",user_age)
