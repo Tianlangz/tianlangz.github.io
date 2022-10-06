@@ -1,6 +1,6 @@
 ---
 author: Hugo Authors
-title: Python的变量类型
+title: Python的变量类型2
 date: 2022-09-19
 description: Python
 series:

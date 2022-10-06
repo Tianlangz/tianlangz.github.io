@@ -1,6 +1,6 @@
 ---
 author: Hugo Authors
-title: 初识Python
+title: 初识Python1
 date: 2022-09-19
 description: Python
 series:
