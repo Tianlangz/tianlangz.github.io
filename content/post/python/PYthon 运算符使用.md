@@ -38,4 +38,12 @@ print("sum1 = %d, sum2 = %.2f" %(sum1,sum2))
 sum1=133, sum2 = 912.579
 ```
 ### 拼接字符串
-当`+`用于字符串时
+当`+`用于字符串时，可以将两个字符串进行拼接
+```python
+name = "我的博客"
+url = "tianlangz.top"
+c = name + "的网址："+url
+print(c)
+```
+## 减法运算
+ 
