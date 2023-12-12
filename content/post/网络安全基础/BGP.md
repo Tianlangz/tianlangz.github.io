@@ -154,4 +154,31 @@ BGP详解
 - RR从客户机收到的路由会反射给客户机和非客户机
 - RR从EBGP邻居收到的路由，会反射给所有的客户机、非客户机
 
+## 利用loopback接口做BGP
+```
+[]
+```
 
+## 路经属性分类
+- 公认必遵
+
+  必须包含在每个Update消息里
+  - Origin
+  - AS_Path
+  - Nrxt_hop
+- 公认任意
+
+  可以包含在某些Update消息里
+  - Local_Preference
+  - Atomic_aggregate
+- 可选过渡
+
+  BGP设备不识别此类属性依然会接受该类属性并通告给其他对等体
+  - Aggregator
+  - Community
+- 可选非过渡
+
+  BGP设备不设别此类属性会忽略该属性，且不会通告给其他对等体
+  - MED
+  - Cluster-List
+  - Originator-ID
