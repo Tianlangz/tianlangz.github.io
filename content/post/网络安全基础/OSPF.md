@@ -97,7 +97,7 @@ network 192.168.1.0 0.0.0.255 （将192.168.1.0/24网段宣告进入到区域0�
     
   OSPF路径会累积cost值来计算最短路径
   - 每一个开启OSPF功能的物理接口都有一个cost值为1
-  - 路由器的开销值是指ospf路由到达目的地过程中经过的每个入接口的cost值相加
+  - 路由器的开销值是指ospf路由到达目的地过程中经过的每个出接口的cost值相加
 
   ## DR和BDR、DRother
 
@@ -113,6 +113,7 @@ network 192.168.1.0 0.0.0.255 （将192.168.1.0/24网段宣告进入到区域0�
     - 选举是非抢占式的
     - 选举是基于接口的
   - 优先级越高越优先，当优先级为0是则这个接口一定是DRother，即不参与选举
+  - DR和BDR按照router ID的大小来确定的
   - 在OSPF网络中只有NBMA和BROADCAST需要选举DR和BDR
   - MA多路访问网络有两种类型：广播行多路访问网络（BMA）及非广播型多路访问网络（NBMA）
   - 一个网络中必须有DR，可以没有BDR
@@ -245,6 +246,7 @@ network 192.168.1.0 0.0.0.255 （将192.168.1.0/24网段宣告进入到区域0�
     - 网络类型有4种：
       - broadcast：数据链路协议为以太网，OSPF缺省配置为广播
       - nbma：当数据链路协议是FR时，国内已经不用了，OSPF缺省配置为NBMA
+        - 必须在OSPF视图下执行命令peer ip-address配置NBMA网络的OSPF邻居
       - p2mp：当数据链路是PPP或者HDLC时可以选用，国内不常用，点到多点
       - p2p：当链路是点对点时，可以选用
     - 特殊情况;
@@ -289,7 +291,7 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
   - 3类LSA：描述区域间某个网段的路由
   - 4类LSA：描述到ASBR的路由
   - 5类LSA：用于描述到达OSPF域外的路由
-![](/images/OSPF/LSA.png)
+![](/images/LSA.png)
   ## 一类LSA
 
     - 类型（Type）： Router-LSA
@@ -396,7 +398,7 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
     - 配合5类LSA计算外部路由
     - 将5类LSA传递到其他路由器中
   - 带你去找ASBR
-  ![](/images/OSPF/四类LSA.jpg)
+  ![](/images/四类LSA.jpg)
   ## 五类LSA
 
   带你去往外部网段，但是去找外部网段，就需要先找到ASBR
@@ -424,7 +426,7 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
     display ospf lsdb ase
     display ospf lsdb ase 192.168.3.0
     ```
-  ![](/images/OSPF/五类LSA.jpeg)
+  ![](/images/五类LSA.jpeg)
   - OSPF外部路由引入时会使用Metric-Type-1或Metric-Type-2类型
     - Metric-Type-1类型（FA地址为0.0.0.0）：
       - 路由开销计算方法为本设备相应的开销和目的地址的开销之和（本设备到相应的ASBR的开销与ASBR到该路由目的地址的开销之和）
@@ -459,7 +461,7 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
       - 该接口通告进OSPF
       - 该接口的网络类型必须是BMA或NBMA
       - 该接口不能是silent-interface
-  ![](/images/OSPF/forwaring address.jpg)
+  ![](/images/forwaring address.jpg)
   如图所示，AR1、AR2、AR3在同一个广播域中，AR1和AR2建立了OSPF邻居，AR2和AR3建立了RIP邻居，且AR3存在一条32位的主机路由。AR2将RIP引入OSPF，就会转发地址置位，置位的转发地址是AR3的G0/0/0接口的地址。根据上述转发地址的作用，AR1可以直接根据转发地址寻找3.3.3.3，下一跳为AR3。如果没有转发地址的存在，那么AR1去访问3.3.3.3会先寻找到AR2，由AR2在去往3.3.3.3，下一跳为AR3。这就是转发地址的作用。
   ## 四类和五类LSA的作用：用于计算外部路由
   ## 七类LSA
@@ -580,5 +582,12 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
   [R6-ospf-1]asbr-summary 192.168.0.0 255.255.0.0
   ```
 
+## 配置OSPF静默接口
+```
+[R1]ospf 100
+[R1-ospf-100]silent g0/0/1
+```
+- OSPF静默接口设置完成后，接口的直连路由仍然存在于LSA当中，只不过该接口不接收、不发送OSPF数据报文了，进而无法与该接口直连的OSPF路由器形成邻居关系。
+- 静默接口和router ID不冲突，当静默接口的路由器没有配置router ID那么静态接口的IP地址也可以作为Router ID
 ## OSPFv3
-![](/images/OSPF/OSPFv3.png)
+![](/images/OSPFv3.png)
