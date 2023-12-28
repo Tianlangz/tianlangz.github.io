@@ -25,6 +25,7 @@ network 192.168.1.0 0.0.0.255 （将192.168.1.0/24网段宣告进入到区域0�
   - 路由器类型：
     - 区域内路由器
     - 骨干区域路由器
+      - 骨干区域是允许存在ASBR的
     - 区域边界路由器（ABR）
       - ABR是用来连接骨干和非骨干区域，ABR可以同时属于两个及以上的区域，但其中一个必须是骨干区域。
     - 自治系统边界路由器（ASBR）
@@ -265,7 +266,8 @@ network 192.168.1.0 0.0.0.255 （将192.168.1.0/24网段宣告进入到区域0�
   - OSPF认证不匹配时，也无法建立邻居状态
   - OSPF中MTU值不一致，也无法建立邻居关系。默认情况下，OSPF不检查MTU值
 # LSA
-  
+  - 每一个LSA会有一个自动刷新时间：30分钟 
+  - 存活时间：60分钟
   - OSPF路由怎么来的
     
     靠LSA计算出来的
@@ -387,13 +389,17 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
 
   就是带你去找ASBR的
   - 类别：ASBR-summary -LSA 
-  - 名字：取自asbr的router-id
+  - 名字（Link State ID）：取自asbr的router-id
   - 通告路由器：本区域的ASBR设备
     - 第一个四类LSA是由和ASBR在同一个区域内的那个ABR产生的
     - 后续的4类LSA，是由本区域的ABR产生的
     - 四类LSA由ABR产生，描述到ASBR的路由，通告给除ASBR所在区域的其他相关区域
   - 传播范围：在一个区域内传播
   - 特点：4类LSA在传播过程中，每经过一个ABR，通过路由器就会变成所经过的那台ABR的router-id
+  - Metric表示该ABR到达ASBR的OSPF开销
+  - Advertising Router
+    - 这个字段表示产生该LSA的ABR
+    - 4类LSA时ABR向区域内的OSPF路由器，介绍其它区域的ASBR的，AdvRouter字段就是ABR的Router ID。不同的ABR，Router ID不会相同。
   - 作用： 
     - 配合5类LSA计算外部路由
     - 将5类LSA传递到其他路由器中
@@ -591,3 +597,7 @@ LSA（链路状态通告）七个字段，通常用其中3个字段来区分不�
 - 静默接口和router ID不冲突，当静默接口的路由器没有配置router ID那么静态接口的IP地址也可以作为Router ID
 ## OSPFv3
 ![](/images/OSPFv3.png)
+## 引入到IS-IS 
+VRP平台上，当设备引入OSPF路由到IS-IS的时候，如果不指定cost
+- 当IS-IS的开销风格是默认的narrow时，引入的外部路由的cost为64
+- 当开销风格为wide时，引入的外部路由的cost为0
