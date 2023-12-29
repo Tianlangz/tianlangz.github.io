@@ -429,10 +429,8 @@ Microsoft Windows [�汾 6.1.7601]
 
 
 C:\Windows\system32>hostname   
- 
+
 hostname
 WIN-5MQI51VLCDC
 ```
 
-# LINUX
- 
