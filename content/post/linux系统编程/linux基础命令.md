@@ -482,4 +482,62 @@ systemctl disable --now 服务名        //禁止开机自启，并立即停止
   - 资源类别：//服务器地址/目录路径/文件名
 ### 什么是LAMP
 - 一种成熟的动态企业网站服务器模式
-  - Apache在最前端，负责处理来自浏览器的web访问请求
+  - Apache在最前端，负责处理来自浏览器的web访问请求 
+- LAMP
+  - L ：Linux 操作系统
+  - A ：Apache web  应用服务器
+  - M ：MySQL/MariaDB 数据库服务器
+  - P ：PHP/python/Perl
+### 快速安装LAMP平台
+  - 离线安装
+    - 预先准备离线素材，上传到/root/目录下
+      ```
+      [root@svr223 ~]# yum -y remove 冲突包     //卸载冲突包
+      [root@svr223 ~]# ls /root/lamp80          //我上传的挂载源
+      [root@svr223 ~]# yum -y install /root/lamp80/*.rpm //安装
+      ```
+  - 确认安装结果，不要有遗漏
+    ```
+    [root@svr223 ~]# yum list httpd mariadb-server php-fpm php-mysqlnd
+    ```
+### 启动LAMP平台
+- 设置服务开机自启，并且立即启动
+  ```
+  [root@svr223 ~]# systemctl enable --now httpd mariadb php-fpm           //设置服务开机自启，并且立即启动
+  [root@svr223 ~]# setenforce 0         //关闭SELinux
+  ```
+- 允许80端口通过防火墙
+  ```
+  [root@svr223 ~]# firewall-cmd --zone=public --add-port=80/tcp --permanent             //允许tcp80端口通过防火墙
+  [root@svr223 ~]# systemctl restart firewalld //重启防火墙
+  ```
+- 从浏览器访问
+  - http://虚拟机的IP地址
+## 测试LAMP平台
+### 检查PHP环境
+- 在网站根目录下创建PHP环境测试文件
+  ```
+  [root@svr223 ~]# vim /var/www/html/t1.php
+  <?php
+  phpinfo();                    //显示PHP版本等信息
+  ?>
+  ```
+### 检查PHP网页访问数据库
+- 在网站根目录下建立数据库测试文件
+  ```
+  [root@svr223 ~]# mysqladmin -uroot password 'db@1234'      //设置数据库密码
+  [root@svr223 ~]# vim /var/www/html/t2.php
+
+  <?php
+    $mysqli = new mysqli('127.0.0.1','root','db@1234','mysql'); 
+    if (mysqli_connect_errno()){ echo '失败！！'; }     
+    else echo '成功！！'; 
+  ?>
+  ```
+### mysql_secure_installation安全加固
+- 默认设置很方便，也很不安全
+  - 需要为MariaDB/MySQL的test库、空密码等默认设置填坑（除密码设置外，一路回车）
+  - 注意：生产环境建议运行此脚本，并仔细完成所有安全优化操作
+    ```
+    [root@svr223 ~]# mysql_secure_installation
+    ```
