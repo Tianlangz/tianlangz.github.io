@@ -2,9 +2,9 @@
 author: Hugo Authors
 title: kali
 date: 2023-12-25
-description:  网络基础知识
+description:  网络安全基础和IE考试
 series: 
-  - 网络安全基础
+  - 网络安全基础和IE考试
 
 ---
 
