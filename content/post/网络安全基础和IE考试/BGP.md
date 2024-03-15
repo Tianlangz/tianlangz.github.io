@@ -59,6 +59,7 @@ BGP详解
   - 1
 - BGP
   - 20
+## BGP不能在同一机器中运行多个AS号
 ## 概念
 - 边界网关协议(距离/路径矢量协议)DV
 - 作用：实现在AS与AS之间动态交换路由信息
@@ -216,12 +217,148 @@ BGP中network宣告的路由中，在存在与IGP的路由表当中，如果IGP�
 ### opensent：open报文已发送状态，已向邻居发送ospf报文
 - 如果bgp设备给邻居发送open报文后，如果收到来自邻居表的回复，并且回复的报文是正确的，BGP设备会继续发送keepalive报文，状态转为open comfirm状态
 - 如果bgp设备给邻居发送open报文后，如果收到来自邻居的回复，但是回复的报文有错误，bgp设备会向邻居发送notification报文（用于断开bgp连接状态），段考后会跳转到最初的idle状态
+- 容易卡在此状态的原因：
+  - router id不能相同
+  - AS号配置错误（寻找对端时填写AS号填写错误）
+
 ### open comfirm：open报文确认状态
 - 如果收到邻居发来的keepalive报文，状态会转为established建立状态
 - 如果收到邻居发来的notification报文，状态会跳转为idle状态
+- 容易卡在此状态的原因
+  - EBGP建立邻居使用的环回口
 ### established：连接已建立状态
 - 如果收到邻居发来的正确的update报文或者keepalive报文，bgp就会认为邻居是正常的
 - 如果收到邻居发来的错误的udate报文或者keepalive报文，bgp设备会发送notification报文，通知邻居，我们分手吧，不做邻居了，会回到idle初始化状态
+## 路经属性分类
+### 公认必遵
+所有设备必须识别该属性，必须包含在每个Update消息里
+- Origin
+  - i
+    - network来的
+  - e
+    - EBGP引入来的
+    - 华为设备没有e
+  - ？
+    - 通过引入进来的
+- AS_Path
+  - 防环
+  - 选路
+  - 分类
+    - 有序
+    - 无序
+    - 联盟有序
+    - 联盟无序
+- Next_hop
+  - 从EBGP邻居学来的路由，在传递给IBGP时，下一跳不变
+    - 防止次优路径
+### 公认任意（原本）
+所有设备必须支持该属性，可以包含在某些Update消息里
+- Local_Preference
+- Atomic_aggregate
+### 可选过渡（聚团）
+BGP设备可以不识别此类属性依然会接受该类属性并通告给其他对等体
+- Aggregator
+- Community
+### 可选非过渡
+BGP设备不识别此类属性会忽略该属性，且不会通告给其他对等体
+- MED
+- Cluster-id
+- Originator-ID
+## 选路原则（11条）
+### 协议首选值
+### 本地优先级
+### 本地生成的路由优于邻居学来的路由
+- 手动聚合路由>自动聚合路由>network>引入的路由
+### as-path路径短的
+### origin
+  - i>e>？
+### med
+  - 小的
+### 从EBGP邻居学来的路由优于从IBGP邻居学来的路由
+### 优选IGP下一跳小的
+- 实现负载分担
+### 簇列表短的
+### originator-id小的
+- 如果没有起源者ID，那就选router id小的
+### 邻居的ip address小的
+- 这里指的是用peer宣告出去的那个
+## 路由策略工具
+route policy
+### 作用
+- 过滤路由
+- 修改属性
+### 原理
+#### 格式
+``` 
+route policy a 名字（premit/deny）动作 node x（这个动作是对acl的premit/deny做操作）
+
+acl 2000 ： ip source premit/deny 192.168.1.0 0.0.0.255 匹配路由
+
+route policy x ??动作 node 10
+
+if-match acl
+```  
+#### 路由匹配工具
+- acl
+  - 主业
+    - 做访问控制，分析数据包，默认动作允许，结合traffic-filter
+  - 副业
+    - 匹配路由 
+      - 匹配路由通配符0代表匹配，1代表不匹配
+      - 匹配路由不专业，不精准，粗略的匹配路由，不能区分掩码
+- ip-prefix
+  - 前缀列表
+  - 专门用于匹配路由，可以通过掩码精确匹配路由
+  - 格式
+  ```
+  ip ip-prefix a（名字） deny/pre（动作）掩码范围
+  ```
+- as-path-filter （只有BGP才能用）
+  - 通过as号匹配路由
+  - 匹配正则
+  - 匹配普通AS号
+- community filter 
+  - 匹配团体字
+  - 匹配正则
+- tag
+  - IGP
+- rd-filter
+  - vpn场景下匹配rd值
+- extcommunity-filter
+  - VPN场景下匹配rt值
+
+# 高级特性
+## 路由匹配工具
+### as-path-filter （只有BGP才能用）
+- 配置
+  - route policy下调用
+  - as-path-filter（直接在邻居下调用）
+- 概念
+  - 通过as号匹配路由
+  - 匹配正则
+    - 想匹配相邻AS传递过来的路由
+    - 想匹配始发AS是100的路由
+  - 匹配普通AS号
+### community filter 
+- 匹配团体字
+- 匹配正则
+![](/images/团体属性怎样用route policy引用.png)
+## ORF
+- 概念：出方向路由过滤
+- 作用：减少链路带宽的占用
+- 原理：通过ORF技术，告诉邻居自己需要哪条路由，邻居收到后，按照需要发布路由
+## 对等体
+作用：简化配置
+## BGP安全
+### MD5认证
+设置后不能发生更改，更改的话业务需要中断
+### keychain认证
+配置和现实机制更复杂，但好在能动态修改密码，所以安全性更高
+### GTSM
+- 通用的TTL检测机制
+- 作用：防止现网中的设备，建立非法邻居
+- 公式：[255-3+1,255]
+## 发射器
 
 
 
@@ -230,16 +367,7 @@ BGP中network宣告的路由中，在存在与IGP的路由表当中，如果IGP�
 
 
 
-
-
-
-
-
-
-## BGP不能在同一机器中运行多个AS号
-# EBGP
-外部邻居：用于AS之间
-## EBGP基本配置
+# EBGP基本配置
 ```
 [R1]bgp 100————开启BGP功能，配置as100
 [R1-bgp]router-id 1.1.1.1————配置router-id
@@ -251,7 +379,7 @@ BGP中network宣告的路由中，在存在与IGP的路由表当中，如果IGP�
 [R2-bgp]peer 192.168.12.1 as 100
 [R2-bgp]network 192.168.2.0 24
 ```
-## BGP邻居表检查解析：
+# BGP邻居表检查解析：
 ```
 [R1]dis bgp peer
 
@@ -288,7 +416,7 @@ BGP中network宣告的路由中，在存在与IGP的路由表当中，如果IGP�
   - 如果这个数值为0，就表示邻居没有给我传递路由
   - 如果这个数值为1，就表示邻居给我传递了一个路由
 
-## 显示BGP协议路由表
+# 显示BGP协议路由表
 ```
 [R1]display bgp routing-table 
 
@@ -313,40 +441,6 @@ BGP中network宣告的路由中，在存在与IGP的路由表当中，如果IGP�
     - i-BGP：表示的这条路由是通过network方式注入的
     - ? - incomplete：表示这条路由是通过import-router方式注入的
 
-### EBGP邻居关系
+# EBGP邻居关系
 - EBGP邻居在传递路由的时候，会自动的修改下一跳地址
 - 会将下一跳地址修改为和对端设备建立邻居的那个接口IP地址
-
-
-## 利用loopback接口做BGP
-- lookback：回环口
-  - 稳定的不会物理上down的接口
-  - 此接口配置成功后，和物理接口一样，在设备上也会产生一条直连路由
-  - lookback口的IP地址配置好了之后，则代表这个设备上，只有这一个地址。接口的广播域上没有其他地址
-```
-
-```
-
-## 路经属性分类
-- 公认必遵
-
-  必须包含在每个Update消息里
-  - Origin
-  - AS_Path
-  - Next_hop
-- 公认任意
-
-  可以包含在某些Update消息里
-  - Local_Preference
-  - Atomic_aggregate
-- 可选过渡
-
-  BGP设备不识别此类属性依然会接受该类属性并通告给其他对等体
-  - Aggregator
-  - Community
-- 可选非过渡
-
-  BGP设备不设别此类属性会忽略该属性，且不会通告给其他对等体
-  - MED
-  - Cluster-List
-  - Originator-ID
