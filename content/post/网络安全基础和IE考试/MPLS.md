@@ -358,7 +358,7 @@ bgp 200
  peer 10.10.1.1 connect-interface LoopBack0
  #
  ipv4-family unicast
-  undo synchronization
+  undo synchronization      //用来关闭BGP与IGP的同步功能
   peer 10.10.1.1 enable
  # 
  ipv4-family vpnv4
@@ -414,4 +414,726 @@ PE和CE使用OSPF，宣告进区域0，中间的MPLS区域，相当于超级骨�
     - 生成的是5类LSA引入时，type类型为2时，此处为5：1
     ![](/images/MPLSVPNOSPF5leiLSA.png)
 - domain ID不相同时，生成的所有LSA传递过去都属于5类LSA
-  
+### OSPF VPN环路
+#### 场景
+CE双归属场景
+#### 类型
+- 三类防环
+  - 拓扑
+    ![](/images/MPLSVPNOSPF35类防环.png)
+  - 问题
+    - 次优路径
+      - PE1收到CE1的路由，通过VPNv4邻居传递给反射器，反射器会反射给PE2和PE3，PE2引入BGP路由到OSPF实例中，此时PE3会从PE2收到该条路由，PE3从OSPF学来的路由优先级为150，从BGP学来的路由优先级为255，因此会选择PE2通过的路由，此时PE3访问192.168.1.0，则形成次优路径
+    - 环路
+      - 在PE2和PE3都进行了BGP和OSPF的双向引入，当PE2在OSPF中引入BGP路由，会生成3类LSA通告给PE3，PE3优选从PE2通告的3类LSA计算路由，放入IP路由表中，此时PE3会将OSPF再引入BGP中。
+      - 此时PE3会自己通过引入生成192.168.1.0的路由，也会从反射器收到192.168.1.0的路由，因为11条选录原则中，从本地生成的路由优于从邻居学来的，所以PE3会通告自己通过引入生成的路由给PE2
+      - 此时PE2会分别从PE3和PE1收到192.168.1.0的路由，如果根据选路原则优选了PE3发来的，则形成环路，如果优选PE1发来的，则无环路
+  - 解决办法
+    - DN位置位
+      - 因为OSPF100的进程绑定了VPN，此时OSPF通告这个3类LSA时自动就会将该3类LSA中的DN位置位，CE2收到这条3类LSA，不会检查DN位，会接收和计算路由，因为CE2的OSPF进程没有绑定实例，PE3收到后只接收，不计算路由，因为PE3也绑定了实例，所以就会检查DN位
+      - 正常情况下不用设置任何东西，CE就会对PE传过来的3类LSA进行DN位职位的操作
+    - 这里重点解释一下什么是DN位
+      - 它用来表示一个方向（down），当DN位被置位时说明这条LSA由PE发给CE。值得注意的是DN位只能用于3类LSA
+      - OSPF规定，PE在接收到DN位已经置位了的LSA之后，PE路由器在OSPF路由的SPF计算期间忽略该路由，并不把这条LSA重发布到BGP中去
+    - 还有一种情况如果我不需要这种DN位置位的情况（就比如我的两个PE都和CE做了实例，来进行连接，这样的情况下我们就不能让DN位置位了，因为这样，有可能导致其他路由不通），在这种情况下，我们就需要禁止DN位置位
+      - 命令
+        ```
+        vpn-instance-capability simple
+        这个命令也可以有效防止因为tag标签导致的5类LSA隔离导致路由不能计算
+        ```
+- 五类防环
+  - 拓扑
+    ![](/images/MPLSVPNOSPF35类防环.png)
+  - 解决办法
+    - tag：默认5类LSA中tag是1
+      - OSPF route-tag只用于私网。在PE上当OSPF发现一条五类LSA的tag和自己的route-tag的一样，就会忽略这条路由不进行处理，用于防止CE双归属是，5类LSA发生环路
+    - PE2在OSPF中引入BGP后使用BGP的AS号计算5类LSA的tag，通告5类LSA，CE不检查tag，PE3会用本地的tag检查接收到五类LSA中的tag，如果相同就直接收不计算
+### 组网
+#### Hub-Spoke
+- PE-CE都运行BGP
+  - 拓扑
+    ![](/images/MPLSVPNHub-Spoke模型.png)
+  - 需求
+    - 分公司都能访问总公司
+    - 分公司互访，流量需要经过总公司
+  - 步骤
+    1. 配置骨干网
+        - 配置IGP，使用ISIS，建立L2的邻居关系
+        - 创建 BGP VPNv4邻居
+        - 配置MPLS
+    2. 配置示例
+        - 配置RD
+        - 配置RT
+    3. 对接站点
+  - 配置
+    ```
+    PE2部分配置
+    interface GigabitEthernet0/0/1.1
+    dot1q termination vid 10
+    ip binding vpn-instance vpn_in
+    ip address 10.1.6.2 255.255.255.0 
+    arp broadcast enable
+    #
+    interface GigabitEthernet0/0/1.2
+    dot1q termination vid 20
+    ip binding vpn-instance vpn_out
+    ip address 10.1.7.2 255.255.255.0 
+    arp broadcast enable
+    #
+    bgp 300
+    peer 10.10.4.4 as-number 300 
+    peer 10.10.4.4 connect-interface LoopBack0
+    #
+    ipv4-family unicast
+      undo synchronization
+      peer 10.10.4.4 enable
+    # 
+    ipv4-family vpnv4
+      policy vpn-target
+      peer 10.10.4.4 enable
+    #
+    ipv4-family vpn-instance vpn_in 
+      peer 10.1.6.3 as-number 400 
+    #当AS号相同时as-path会触发防环，丢弃接收来的路由，所以我们需要配置以下
+    ipv4-family vpn-instance vpn_out 
+      peer 10.1.7.3 as-number 400 
+      peer 10.1.7.3 allow-as-loop 1  AS号允许重复1次，默认为1 /PE2传给PE3，
+      PE3不需要配置允许AS号重复，因为是IBGP邻居,只在EBGP邻居检测
+    ```
+  - 特殊注解
+    - Hub-Spoke只是一种特殊的组网方式，控制平面传递路由和数据转发平面转发数据，原理都是一样的，本质都是通过匹配RT值，决定了路由注入到那个实例中，从而影响转发路径
+    - PE2不能用一个实例，因为一般情况下从一个接口发出去的路由，不能从接口再收到，防止环路，该场景中会收到传回来的路由，但不是最优的路由，也就不满足Hub-Spoke组网，即分公司之间的流量不会经过总部的CE设备转发
+    - EBGP传递IBGP邻居是本应该不改变下一跳而在VPNv4中会改变
+- PE-CE都运行OSPF
+  - 拓扑
+    ![](/images/MPLSVPNHub-Spoke模型.png)
+  - 需求
+    1. 分公司能够访问总公司
+    2. 分公司互访，流量需要经过总公司
+    3. CE-spoke与PE-spoke之间运行OSPF，CE-hub与PE-hub之间运行OSPF
+  - 配置
+    ```
+    PE2配置：
+    ospf 100 vpn-instance vpn_in
+    import-route bgp
+    area 0.0.0.0 
+      network 10.1.6.1 0.0.0.0 
+    #
+    ospf 200 vpn-instance vpn_out
+    vpn-instance-capability simple
+    area 0.0.0.0 
+      network 10.1.6.5 0.0.0.0 
+
+    CE3配置：
+    ospf 200 
+    area 0.0.0.0 
+      network 10.1.6.2 0.0.0.0 
+      network 10.1.6.6 0.0.0.0 
+
+    ```
+  - 解析
+    - 该场景中因为OSPF VPN在绑定多实例场景认为会有环路，因此在发送3、5、7类LSA时，默认会将LSA中的DN位置位，此时另一台PE收到DN位置位的LSA后就不会计算OSPF路由，防止环路，但是在该场景中，没有环路也会导致vpn out收到该LSA无法计算路由，导致业务不通，因此需要使用`vpn-instance-capability simple`命令，不检查DN Bit和Route-tag 而直接计算出所有OSPF路由 
+# MPLS跨域VPN
+## option A
+### 案例
+- 拓扑
+  ![](/images/MPLS跨域VPN.png)
+- 需求
+  - PC1和PC3跨AS实现互访
+- 步骤
+  1. 分别配置单域AS100、AS200
+      - 配置OSPF
+      - 配置BGP，建立VPNv4邻居
+      - 配置MPLS
+  2. CE与PE对接
+      - 建立BGP邻居
+      - PE上创建实例，并在接口绑定
+  3. PE与PE之间建立IPV4邻居，传递IPv4路由
+- 解析
+  - 控制平面
+    - AS200
+      - AR10将2.0的路由通过BGP邻居传递给AR8，AR8在BGP的VPN时立下学习到该路由，转换成为VPNv4路由添加RD、RT值、内层标签，通过VPNv4邻居传递给反射器，反射器将路由反射给AR6客户机。
+      - AR6通过匹配RT值，匹配成功接收VPNv4路由，只去掉RD，保留内层标签，转换为实例路由，在通过ipv4邻居传递给AR4
+    - AS100
+      - AR4从邻居收到ipv4路由，路由绑定为实例1，AR4将该实例路由转换为VPNv4路由，加上RT、RD、内层标签，通过反射器反射给AR2
+      - AR2收到该VPNv4路由后去掉RD值，根据RT值，将路由注入到对应的实例，保留内层标签，并将该路由通过BGP邻居传递给AR1
+  - 转发平面
+    - AS100
+      - 在AR1查看路由表去往2.0的BGP路由，下一跳是AR2后基于目标地址192.168.2.0查询实例下的路由，发现去往2.0的地址是BGP邻居10.10.4.4，并压入内层标签1028
+        ![](/images/MPLS跨域VPNoptionA转发平面1.png)
+      通过迭代查询目标地址10.10.4.4的FIB表，tunnel口不为0
+        ![](/images/MPLS跨域VPNoptionA转发平面2.png)
+      查询标签转发表压入外层标签1025
+        ![](/images/MPLS跨域VPNoptionA转发平面3.png)
+      经过传输设备，将出标签替换为3.弹出外层标签，转发给AR4，根据内层标签进入实例1
+        ![](/images/MPLS跨域VPNoptionA转发平面4.png)
+      进入实例1下基于2.0查找路由表，下一跳是EBGP邻居的接口地址
+        ![](/images/MPLS跨域VPNoptionA转发平面5.png)
+    - AS200
+      - AR6收到后在实例下继续查找路由表，封装外层标签1028，下一跳为10.10.8.8，根据MPLS外层标签转发到AR8，AR8根据内层标签找到对应的实例，在实例下查找路由表，转发给ipv4邻居的下一跳（过程与AS100内转发相同）
+- 命令
+```
+接口配置及AS内的IGP配置为预配;MPLS作为预配
+AR4的G0/0/1与AR6的G0/0/2接口不运行MPLS
+
+AR2配置：
+mpls lsr-id 10.10.2.2
+mpls
+#
+mpls ldp
+#
+ip vpn-instance 1
+ ipv4-family
+  route-distinguisher 1:1
+  vpn-target 2:2 export-extcommunity
+  vpn-target 2:2 import-extcommunity
+ #
+ bgp 100
+ peer 10.10.5.5 as-number 100 
+ peer 10.10.5.5 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.5.5 enable
+ # 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.5.5 enable
+ #
+ ipv4-family vpn-instance 1 
+  peer 10.1.12.1 as-number 400
+ #
+ interface GigabitEthernet0/0/0
+ ip binding vpn-instance 1
+ ip address 10.1.12.2 255.255.255.0 
+#
+interface GigabitEthernet0/0/1
+ ip address 10.1.23.2 255.255.255.0 
+ mpls
+ mpls ldp
+AR5配置：
+bgp 100
+ peer 10.10.2.2 as-number 100 
+ peer 10.10.2.2 connect-interface LoopBack0
+ peer 10.10.4.4 as-number 100 
+ peer 10.10.4.4 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.2.2 enable
+  peer 10.10.4.4 enable
+ # 
+ ipv4-family vpnv4
+  undo policy vpn-target
+  peer 10.10.2.2 enable
+  peer 10.10.2.2 reflect-client
+  peer 10.10.4.4 enable
+  peer 10.10.4.4 reflect-client
+AR4配置：
+#
+ip vpn-instance 1
+ ipv4-family
+  route-distinguisher 1:1
+  vpn-target 2:2 export-extcommunity
+  vpn-target 2:2 import-extcommunity
+#
+mpls lsr-id 10.10.4.4
+mpls
+#
+mpls ldp
+#
+bgp 100
+ peer 10.10.5.5 as-number 100 
+ peer 10.10.5.5 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.5.5 enable
+ # 
+ ipv4-family vpnv4
+  undo policy vpn-target
+  peer 10.10.5.5 enable
+ #
+ ipv4-family vpn-instance 1 
+  peer 10.1.46.6 as-number 200 
+ #
+ interface GigabitEthernet0/0/1
+ ip binding vpn-instance 1
+ ip address 10.1.46.4 255.255.255.0
+ 
+ AS200内路由器与AS100相同，配置略
+```
+### 不足
+- ASBR实例多，对设备性能影响大
+  - ASBR既要传递又要转发数据，路由多，流量大，一对公司，四个实例（4*n），n表示几对公司
+- 为什么划分多实例
+  - 区分不同公司的路由，把不同公司的路由，传递到对应的公司去
+
+## option B
+### 案例
+#### 拓扑
+![](/images/MPLS跨域VPN.png)
+#### 需求
+PC1和PC2跨AS实现互访
+#### 步骤
+1. 分别配置单域AS100、AS200
+    - 配置OSPF
+    - 配置BGP、建立VPNv4邻居
+    - 配置MPLS
+2. CE与PE对接
+    - 建立BGP邻居
+    - PE上创建按实例，并在接口绑定
+3. PE与PE之间建立VPNv4邻居，传递VPNv4路由
+#### 解析
+##### 控制平面（与optionA的区别）
+- AS100
+  - ASBR没有实力，关闭RT检查，与RR建立VPNv4邻居关系，RR关闭RT检查接收VPNv4路由
+    ![](/images/MPLSVPNoptionBAS100.png)
+  ASBR之间建立VPNv4 EBGP邻居关系，通过VPNv4邻居传递VPNv4路由给AS200
+- AS200
+  - AR6接收该VPNv4路由
+  ![](/images/MPLSVPNoptionBAS100.png)
+  AR6将VPNv4路由传递给反射器AR9，传递VPNv4路由时下一跳会自动改变
+  ![](/images/MPLSVPNoptionBAS200下一跳自动改变.png)
+  `注：（在传递ipv4路由时下一跳不改变）`
+
+  到达AR8匹配RT值，接收该VPNv4路由，去掉RD，根据入向RT导入对应实例
+##### 转发平面
+PC1访问PC2，AR2查找实例下路由192.168.2.0，去往该路由的下一跳是10.10.4.4，封装内层标签，查询目标地址10.10.4.4数据包迭代进行mpls隧道，封装外层标签，通过标签转发，AR3弹出外层标签，到达AR4露出内层标签，通过查找2.0的VPNv4路由的详细信息，可知该内层标签是AR6发给自己的，重新封装内层标签，下一跳是10.1.46.6，通过标签交换转发给AR6
+  ![](/images/MPLSVPNoptionB转发平面1.png)
+  AR6收到VPNv4路由后，重新封装内层标签，查找VPNv4路由表迭代进隧道
+  ![](/images/MMPLSVPNoptionB转发平面2.png)
+  ![](/images/MPLSVPNoptionB转发平面3.png)
+  封装外层标签
+  ![](/images/MPLSVPNoptionB转发平面4.png)
+  通过外层标签转发AR7，AR7剥离外层标签给AR8，AR8通过内层标签进入对应的实例，在实例下查找路由表转发给AR10
+  ##### VPNv4路由标签为什么变化
+  - ASBR1与ASBR2建立VPNv4邻居，从EBGP邻居收到的VPNv4路由传递给IBGP邻居时下一跳会发生变化，内层标签也会发生变化，因为标签只有本地有效
+  - 如果不变会导致的问题：
+    - 如果标签相同，将无法通过标签区分是去往哪个site
+  ![](/images/MMPLSVPNoptionBVPNv4路由为什么变化.png)
+#### 命令
+```
+AR2配置：
+ip vpn-instance 1
+ ipv4-family
+  route-distinguisher 1:1
+  vpn-target 2:2 export-extcommunity
+  vpn-target 2:2 import-extcommunity
+#
+mpls lsr-id 10.10.2.2
+mpls
+#
+mpls ldp
+#
+interface GigabitEthernet0/0/0
+ ip binding vpn-instance 1
+ ip address 10.1.12.2 255.255.255.0 
+#
+interface GigabitEthernet0/0/1
+ ip address 10.1.23.2 255.255.255.0 
+ mpls
+ mpls ldp
+#
+interface LoopBack0
+ ip address 10.10.2.2 255.255.255.255 
+#
+bgp 100
+ peer 10.10.5.5 as-number 100 
+ peer 10.10.5.5 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.5.5 enable
+ # 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.5.5 enable
+ #
+ ipv4-family vpn-instance 1 
+  peer 10.1.12.1 as-number 400 
+#
+ospf 1 router-id 2.2.2.2 
+ area 0.0.0.0 
+  network 10.1.23.2 0.0.0.0 
+  network 10.10.2.2 0.0.0.0 
+AR5配置：
+#
+mpls lsr-id 10.10.5.5
+mpls
+#
+mpls ldp
+#
+interface GigabitEthernet0/0/0
+ ip address 10.1.35.5 255.255.255.0 
+ mpls
+ mpls ldp
+#
+interface LoopBack0
+ ip address 10.10.5.5 255.255.255.255 
+#
+bgp 100
+ peer 10.10.2.2 as-number 100 
+ peer 10.10.2.2 connect-interface LoopBack0
+ peer 10.10.4.4 as-number 100 
+ peer 10.10.4.4 connect-interface LoopBack0
+ # 
+ ipv4-family vpnv4
+  undo policy vpn-target
+  peer 10.10.2.2 enable
+  peer 10.10.2.2 reflect-client
+  peer 10.10.4.4 enable
+  peer 10.10.4.4 reflect-client
+#
+ospf 1 router-id 5.5.5.5 
+ area 0.0.0.0 
+  network 10.1.35.5 0.0.0.0 
+  network 10.10.5.5 0.0.0.0
+AR4配置：
+mpls lsr-id 10.10.4.4
+mpls
+#
+mpls ldp
+#
+interface GigabitEthernet0/0/0
+ ip address 10.1.34.4 255.255.255.0 
+ mpls
+ mpls ldp
+#
+interface GigabitEthernet0/0/1
+ ip address 10.1.46.4 255.255.255.0 
+ mpls
+#
+interface LoopBack0
+ ip address 10.10.4.4 255.255.255.255 
+#
+bgp 100
+ peer 10.1.46.6 as-number 200 
+ peer 10.10.5.5 as-number 100 
+ peer 10.10.5.5 connect-interface LoopBack0
+#
+ ipv4-family vpnv4
+  undo policy vpn-target
+  peer 10.1.46.6 enable
+  peer 10.10.5.5 enable
+#
+ospf 1 router-id 4.4.4.4 
+ area 0.0.0.0 
+  network 10.1.34.4 0.0.0.0 
+  network 10.10.4.4 0.0.0.0
+AR6配置
+#
+mpls lsr-id 10.10.6.6
+mpls
+#
+mpls ldp
+#
+interface GigabitEthernet0/0/1
+ ip address 10.1.67.6 255.255.255.0 
+ mpls
+ mpls ldp
+#
+interface GigabitEthernet0/0/2
+ ip address 10.1.46.6 255.255.255.0 
+ mpls
+#
+interface LoopBack0
+ ip address 10.10.6.6 255.255.255.255 
+#
+bgp 200
+ peer 10.1.46.4 as-number 100 
+ peer 10.10.9.9 as-number 200 
+ peer 10.10.9.9 connect-interface LoopBack0
+ #
+ ipv4-family vpnv4
+  undo policy vpn-target
+  peer 10.1.46.4 enable
+  peer 10.10.9.9 enable
+#
+ospf 1 router-id 6.6.6.6 
+ area 0.0.0.0 
+  network 10.1.67.6 0.0.0.0 
+  network 10.10.6.6 0.0.0.0 
+AR8配置：
+#
+ip vpn-instance 1
+ ipv4-family
+  route-distinguisher 1:2
+  vpn-target 2:2 export-extcommunity
+  vpn-target 2:2 import-extcommunity
+#
+mpls lsr-id 10.10.8.8
+mpls
+#
+mpls ldp
+#
+interface GigabitEthernet0/0/1
+ ip binding vpn-instance 1
+ ip address 10.1.18.8 255.255.255.0 
+#
+interface GigabitEthernet0/0/2
+ ip address 10.1.78.8 255.255.255.0 
+ mpls
+ mpls ldp
+#
+interface LoopBack0
+ ip address 10.10.8.8 255.255.255.255 
+#
+bgp 200
+ peer 10.10.9.9 as-number 200 
+ peer 10.10.9.9 connect-interface LoopBack0
+# 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.9.9 enable
+#
+ ipv4-family vpn-instance 1 
+  peer 10.1.18.10 as-number 500 
+#
+ospf 1 router-id 8.8.8.8 
+ area 0.0.0.0 
+  network 10.1.78.8 0.0.0.0 
+  network 10.10.8.8 0.0.0.0 
+
+```
+### 特点与不足
+- 特点
+  - 配置简单，ASBR不需要创建实例
+- 不足
+  - ASBR即传递路由，有转发数据，依旧对ASBR性能占用过大
+## option C
+### option C方案1
+#### 拓扑
+![](/images/MPLSVPNoptionC拓扑.png)
+#### 需求
+PC1和PC2跨AS实现互访
+#### 步骤
+1. 配置单个AS内IGP，配置MPLS
+2. 建立BGP的ipv4邻居，传递ipv4路由，给监理邻居的VPNv4的环回口地址分配标签，使用路由策略让MP-BGP为BGP路由分配标签
+#### 解析
+- 分析
+  - optionC狮子啊PE设备之间建立VPNv4邻居，需要解决的问题就是如何让建立邻居的环回口地址互通。需要将PE的ipv4路由和标签传递到对端PE，路由传递容易关键是解决标签如何传递，为什么要传递标签呢？`因为在数据转发过程中，可能会出现路由黑洞，所以要通过标签转发，标签必须是连续的。`ASBR之间是不同AS，也没有IGP，LDP分配标签要保证IGP可达，LDP不能为该路由分配标签，因此可以通过MP-BGP为ipv4路由分配标签
+- 控制平面
+  - 传递路由
+    - 在两个ASBR之间建立BGP的ipv4邻居，并分别与自己AS内的PE设备建立ipv4的邻居关系，并在ASBR上宣告建立vpnv4邻居的环回口地址
+    - ASBR与PE之间跨设备建立ipv4的BGP邻居，传递BGP路由
+  - 传递标签
+    - 此时虽然学习到路由，但是没有标签，无法互通，因此需要在AR4通告给AR6邻居时打上BGP标签，在AR6上匹配到AR4分配的标签后，再打上BGP标签通告给AR8，同理在AR6去往AR4的邻居也需要打标签，ASBR需要支持标签通告能力，此时互相学习到了对方的路由，地址可以通告标签实现互通
+    - AR2与AR8之间建立VPNv4的邻居，传递VPNv4路由
+- 转发平面
+  - 在AR2上查找VPNv4路由，下一跳是10.10.8.8，封装内层标签1026
+    ![](/images/MPLSVPNoptionC1转发平面1.png)
+  - 去往10.10.8.8下一跳是10.10.4.4，封装中层标签1027
+    ![](/images/MPLSVPNoptionC1转发平面2.png)
+  - 去往10.10.4.4封装外层标签1025，下一跳是AR3，发给AR3，查找标签转发表转发，也同时剥离外层标签
+    ![](/images/MMPLSVPNoptionC1转发平面3.png)
+  - 到达ASBR后查找BGP分配的标签，发给AR6，AR6查找LDP分配的标签去往10.10.8.8，到AR7，AR7剥离外层标签，剩下内层标签
+    ![](/images/MPLSVPNoptionC1转发平面4.png)
+  - AR8收到该数据包根据内层标签转发到相应的实例中，根据查找实例下路由表，转发给AR10，实现通讯
+
+  `注：BGP默认可以给VPNv4分标签，BGP默认不会给IPv4路由分标签`
+  - ASBR在从EBGP邻居学来的路由通告给IBGP时，下一跳不变，但在这个场景下，当打上标签后，下一跳会改变
+#### 命令
+```
+AR2配置：
+bgp 100
+ peer 10.10.4.4 as-number 100 
+ peer 10.10.4.4 connect-interface LoopBack0
+ peer 10.10.8.8 as-number 200 
+ peer 10.10.8.8 ebgp-max-hop 5 //解析如下
+ peer 10.10.8.8 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.4.4 enable
+  peer 10.10.4.4 label-route-capability
+  peer 10.10.8.8 enable
+ # 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.8.8 enable
+ #
+ ipv4-family vpn-instance a 
+  peer 10.1.12.1 as-number 400 
+AR4配置：
+bgp 100
+ peer 10.1.46.6 as-number 200 
+ peer 10.10.2.2 as-number 100 
+ peer 10.10.2.2 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  network 10.10.2.2 255.255.255.255 
+  peer 10.1.46.6 enable
+  peer 10.1.46.6 route-policy b export
+  peer 10.1.46.6 label-route-capability
+  peer 10.10.2.2 enable
+  peer 10.10.2.2 route-policy a export
+  peer 10.10.2.2 next-hop-local 
+  peer 10.10.2.2 label-route-capability
+  #
+route-policy a permit node 10 
+ if-match mpls-label 
+ apply mpls-label
+#
+route-policy b permit node 10 
+ apply mpls-label
+AR6配置：
+bgp 200
+ peer 10.1.46.4 as-number 100 
+ peer 10.10.8.8 as-number 200 
+ peer 10.10.8.8 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  network 10.10.8.8 255.255.255.255 
+  peer 10.1.46.4 enable
+  peer 10.1.46.4 route-policy a export
+  peer 10.1.46.4 label-route-capability
+  peer 10.10.8.8 enable
+  peer 10.10.8.8 route-policy b export
+  peer 10.10.8.8 next-hop-local 
+  peer 10.10.8.8 label-route-capability
+#
+route-policy a permit node 10 
+ apply mpls-label
+#
+route-policy b permit node 10 
+ if-match mpls-label 
+ apply mpls-label
+AR8配置
+bgp 200
+ peer 10.10.2.2 as-number 100 
+ peer 10.10.2.2 ebgp-max-hop 5 
+ peer 10.10.2.2 connect-interface LoopBack0
+ peer 10.10.6.6 as-number 200 
+ peer 10.10.6.6 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.2.2 enable
+  peer 10.10.6.6 enable
+  peer 10.10.6.6 label-route-capability
+ # 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.2.2 enable
+ #
+ ipv4-family vpn-instance a 
+  peer 10.1.18.10 as-number 500 
+#
+```
+### option C方案2
+#### 拓扑
+![](/images/MPLSVPNoptionC拓扑.png)
+#### 需求
+PC1和PC2跨AS实现互访
+#### 步骤
+1. 配置单个AS内IGP，配置MPLS
+2. 在ASBR之间建立BGP的ipv4邻居，传递ipv4路由，将BGP路由引入IGP，让LDP为引入的BGP路由分配标签
+#### 解析
+方案2：较方案1的区别在与PE建立VPNv4邻居的环回口地址是如何传递的，方案2中是通过在ASBR上引入BGP实现的IGP-BGP-IGP，BGP间的标签仍然通过MP-BGP分配，IGP分配的标签通过LDP为BGP路由分配
+- 控制平面
+  1. 传递路由：AR6宣告10.10.8.8，通过BGP邻居传递给AR4，AR4上BGP引入OSPF，AR2通过IGP学习到AR8的环回口路由
+  2. 传递标签：AR4上手动让LDP给引入的BGP路由分配标签，默认不分配
+- 转发平面
+  - 基于192.168.2.0查找实例路由表，下一跳为10.10.8.8
+    ![](/images/MPLSVPNoptionC2转发平面1.png)
+  - 去往下一跳为标签转发，封装的内层标签为AR8分配，封装外层标签AR3通过LDP分配的，通过外层标签转发给AR3
+    ![](/images/MPLSVPNoptionC2转发平面2.png)
+  - AR3经过外层标签转发给AR4，该标签是LDP分配的，到达ASBR依旧依据标签转发，该标签是BGP分配的
+    ![](/images/MPLSVPNoptionC2转发平面3.png)
+  - 到达AR6查找标签转发，该标签是LDP分配的，一次转发给AR8，AR8通过内层标签注入到对应的实例下，实现实例路由表的转发
+#### 重点配置
+```
+AR8配置：
+bgp 200
+ peer 10.10.2.2 as-number 100 
+ peer 10.10.2.2 ebgp-max-hop 5 
+ peer 10.10.2.2 connect-interface LoopBack0
+ peer 10.10.6.6 as-number 200 
+ peer 10.10.6.6 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.2.2 enable
+  peer 10.10.6.6 enable
+  peer 10.10.6.6 label-route-capability
+ # 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.2.2 enable
+ #
+ ipv4-family vpn-instance a 
+  peer 10.1.18.10 as-number 500 
+AR6配置：
+route-policy a permit node 10 
+ apply mpls-label
+#
+bgp 200
+ peer 10.1.46.4 as-number 100 
+#
+ ipv4-family unicast
+  undo synchronization
+  network 10.10.8.8 255.255.255.255 
+  peer 10.1.46.4 enable
+  peer 10.1.46.4 route-policy a export
+  peer 10.1.46.4 label-route-capability
+#
+ospf 1 router-id 6.6.6.6 
+ import-route bgp
+ area 0.0.0.0 
+  network 10.1.67.6 0.0.0.0 
+  network 10.10.6.6 0.0.0.0 
+#
+mpls lsr-id 10.10.6.6
+mpls
+ lsp-trigger bgp-label-route
+AR4配置：
+route-policy b permit node 10 
+ apply mpls-label
+#
+bgp 100
+ peer 10.1.46.6 as-number 200 
+#
+ ipv4-family unicast
+  undo synchronization
+  network 10.10.2.2 255.255.255.255 
+  peer 10.1.46.6 enable
+  peer 10.1.46.6 route-policy b export
+  peer 10.1.46.6 label-route-capability
+#
+ospf 1 router-id 4.4.4.4 
+ import-route bgp
+ area 0.0.0.0 
+  network 10.1.34.4 0.0.0.0 
+  network 10.10.4.4 0.0.0.0 
+#
+mpls lsr-id 10.10.4.4
+mpls
+ lsp-trigger bgp-label-route
+#
+mpls ldp
+AR2配置：
+bgp 100
+ peer 10.10.4.4 as-number 100 
+ peer 10.10.4.4 connect-interface LoopBack0
+ peer 10.10.8.8 as-number 200 
+ peer 10.10.8.8 ebgp-max-hop 5 
+ peer 10.10.8.8 connect-interface LoopBack0
+ #
+ ipv4-family unicast
+  undo synchronization
+  peer 10.10.4.4 enable
+  peer 10.10.4.4 label-route-capability
+  peer 10.10.8.8 enable
+ # 
+ ipv4-family vpnv4
+  policy vpn-target
+  peer 10.10.8.8 enable
+ #
+ ipv4-family vpn-instance a 
+  peer 10.1.12.1 as-number 400 
+```
+#### 不足
+如果AS内设备过多，每一他爱设备都要分配标签，作用的范围比较大，占用设备性能
