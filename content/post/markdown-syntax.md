@@ -74,6 +74,9 @@ Tables aren't part of the core Markdown spec, but Hugo supports supports them ou
 | Italics   | Bold     | Code   |
 | --------- | -------- | ------ |
 | _italics_ | **bold** | `code` |
+|斜体 |粗体 |代码 |
+|--------- |-------- |------ |
+|_斜体_ |**粗体** |“代码” |
 
 ## Code Blocks
 
