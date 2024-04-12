@@ -6,16 +6,16 @@ description:  网络安全基础和IE考试
 series: 
   - 网络安全基础和IE考试
 tags : [
-    "markdown",
-    "css",
-    "html",
+    markdown,
+    css,
+    html,
 ]
 categories : [
-    "themes",
-    "syntax",
+    themes,
+    syntax,
 ]
-series : ["Themes Guide"]
-aliases : ["migrate-from-jekyl"]
+series : [Themes Guide]
+aliases : [migrate-from-jekyl]
 ---
 
 <!--more-->
