@@ -10,7 +10,7 @@ tags : [
 ]
 categories : [
     ENSP,
-    华为设备配置,
+    华为设备配置
 ]
 series : [HCIE考试]
 aliases : [数通基础]
