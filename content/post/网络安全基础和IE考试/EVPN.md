@@ -1,11 +1,19 @@
 ---
-author: Hugo Authors
+author: zty
 title: EVPN
 date: 2024-04-09
 description:  网络安全基础和IE考试
 series: 
   - 网络安全基础和IE考试
-
+tags : [
+    网络基础,HCIE考试
+]
+categories : [
+    ENSP,
+    华为设备配置
+]
+series : [HCIE考试]
+aliases : [数通基础]
 ---
 EVPN（Ethernet Virtual Private Network），它本身就属于BGP的一个拓展簇，利用BGP拓展协议来传递二层或三层的可达性信息，EVPN不像传统L2VPN VPLS那样，通过数据平面泛红学习MAC地址的，而是引入控制平面学习MAC和IP，实现了转控分离
 

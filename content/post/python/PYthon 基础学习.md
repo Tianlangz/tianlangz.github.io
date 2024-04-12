@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: 初识Python1
 date: 2022-09-19
 description: Python
 series:
   - Python
-
+tags : [
+    python基础
+]
+categories : [zty
+    编程基础
+]
+series : [论文用]
+aliases : [python基础]
 ---
 使用编译器将自身转换成机器语言的高级语言，通常称为编译型语言；而使用解释器将自身转换为机器语言的高级语言，通常称为解释型语言，python就属于解释型编程语言。
 

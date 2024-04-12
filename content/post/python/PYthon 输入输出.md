@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: Python的输入输出3
 date: 2022-10-01
 description: Python
 series:
   - Python
-
+tags : [
+    python基础
+]
+categories : [
+    编程基础
+]
+series : [论文用]
+aliases : [python基础]
 ---
 
 输入输出函数的使用

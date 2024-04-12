@@ -1,11 +1,19 @@
 ---
-author: Hugo Authors
+author: zty
 title: MPLS及MPLS VPN
 date: 2024-03-22
 description:  网络安全基础和IE考试
 series: 
   - 网络安全基础和IE考试
-
+tags : [
+    网络基础,HCIE考试
+]
+categories : [
+    ENSP,
+    华为设备配置
+]
+series : [HCIE考试]
+aliases : [数通基础]
 ---
 多协议标签交换MPLS（Multiprotocol Label Switching）是一种骨干网技术。早期是为了解决IP地址转发效率低的问题，转发过程中不在查找IP路由表，而是查二层的标签转发，实现快速转发，但是随着转发性能的提高，基于IP地址转发一统天下，MPLS淡出了人们的视线，但随着VPN的兴起。MPLS可以很好的与VPN结合，从而又以MPLS VPN的形式回到大众视线
 <!--more-->

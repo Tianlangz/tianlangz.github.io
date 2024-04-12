@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: linux基础学习
 date: 2023-12-29
 description: Linux系统编程
 series:
   - Linux系统编程
-
+tags : [
+    linux基础,RHCE考试
+]
+categories : [
+    linux操作基础
+]
+series : [RHCE考试]
+aliases : [linux基础]
 ---
 ```
 ```

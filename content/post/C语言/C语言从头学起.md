@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: C语言从头开始
 date: 2022-05-04
 description:  C语言
 series:
   - C语言
-
+tags : [
+    C语言基础,二级考试
+]
+categories : [
+    编程基础
+]
+series : [二级考试]
+aliases : [C语言基础]
 ---
 
 我们应该从头开始学习C语言，C语言是一个很基础性质的语言，他将带领你进入编码的世界。

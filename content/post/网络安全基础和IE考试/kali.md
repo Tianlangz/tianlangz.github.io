@@ -1,11 +1,19 @@
 ---
-author: Hugo Authors
+author: zty
 title: kali
 date: 2023-12-25
 description:  网络安全基础和IE考试
 series: 
   - 网络安全基础和IE考试
-
+tags : [
+    网络安全基础,HCIE考试,Linux
+]
+categories : [
+    ENSP,
+    华为设备配置
+]
+series : [HCIE考试]
+aliases : [数通基础]
 ---
 
 kali使用
