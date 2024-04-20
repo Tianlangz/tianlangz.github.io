@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: Python的变量类型2
 date: 2022-09-19
 description: Python
 series:
   - Python
-
+tags : [
+    python基础
+]
+categories : [
+    编程基础
+]
+series : [论文用]
+aliases : [python基础]
 ---
 任何的编程语言都需要处理数据，从而达到某种目的，但我们需要把这些数据存入到变量中方便我们的使用。
 

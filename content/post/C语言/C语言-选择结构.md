@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: C语言-选择结构
 date: 2022-05-09
 description:  C语言
 series:
   - C语言
-
+tags : [
+    C语言基础,二级考试
+]
+categories : [
+    编程基础
+]
+series : [二级考试]
+aliases : [C语言基础]
 ---
 ```
 关系运算符

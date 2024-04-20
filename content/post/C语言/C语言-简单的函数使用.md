@@ -1,11 +1,18 @@
 ---
-author: Hugo Authors
+author: zty
 title: C语言-简单的函数使用
 date: 2022-05-04
 description:  C语言
 series:
   - C语言
-
+tags : [
+    C语言基础,二级考试
+]
+categories : [
+    编程基础
+]
+series : [二级考试]
+aliases : [C语言基础]
 ---
 
 用一些简单的C语句来编写我们的第一句程序。
