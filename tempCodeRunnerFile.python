@@ -1,80 +1,166 @@
-import turtle
-import math
-turtle.pen()
-t=turtle
-t.up()
-t.goto(0,150)
-t.down()
-t.color('red')
-t.begin_fill()
-t.fillcolor('red')
-t.speed(1)
-t.left(45)
-t.forward(150)
-t.right(45)
-t.forward(100)
-t.right(45)
-t.forward(100)
-t.right(45)
-t.forward(100)
-t.right(45)
-t.forward(250+math.sqrt(2)*100)
-t.right (90)
-t.speed(2)
-t.forward(250+100*math.sqrt(2))
-t.right(45)
-t.forward(100)
-t.right(45)
-t.forward(100)
-t.right(45)
-t.forward(100)
-t.right(45)
-t.forward(150)
-t.end_fill()
-t.goto(-10,0)
-t.pencolor('white')
-#L
-t.pensize(10)
-t.goto(-50,0)
-t.goto(-50,80)
-t.up ()
-#I
-t.goto(-100,0)
-t.down()
-t.goto(-160,0)
-t.goto(-130,0)
-t.goto(-130,80)
-t.goto(-160,80)
-t.goto(-100,80)
-t.up()
-#O
-t.goto(10,25)
-t.down()
-t.right(45)
-t.circle(25,extent=180)
-t.goto(60,55)
-t.circle(25,extent=180)
-t.goto(10,25)
-t.up()
-t.goto(75,80)
-t.down()
-t.goto(100,0)
-t.goto(125,80)
-t.up()
-t.goto(180,80)
-t.down()
-t.goto(140,80)
-t.goto(140,0)
-t.goto(180,0)
-t.up()
-t.goto(180,40)
-t.down()
-t.goto(140,40)
-#U
-t.up()
-t.goto(-40,-30)
-t.down()
-t.goto(-40,-80)
-t.circle(40,extent=180)
-t.goto(40,-30)
-t.hideturtle()
+from paramiko import SSHClient, AutoAddPolicy # 导入SSH连接所需库
+from datetime import datetime, timedelta # 导入日期时间库
+from ncclient.xml_ import to_ele # 导入将XML字符串转换为Element对象的函数
+from ncclient import manager # 导入用于管理netconf连接的库
+from time import sleep # 导入暂停执行的库
+
+
+class Dc:
+    # 初始化函数，创建一个SSH客户端并打开一个shell
+    def __init__(self, addr, ssh_uname = None, ssh_upwd = None):
+        self.addr = addr
+        self.ssh_uname = ssh_uname
+        self.ssh_upwd = ssh_upwd
+        self.client = self._get_client()
+        self.cli = self.client.invoke_shell()
+        self.cli.send('screen-length 0 temporary\n') # 设置设备输出不分页
+        sleep(3) # 等待设备响应
+        self.cli.recv(99999) # 接收设备响应
+
+    def _get_client(self):
+        cli = SSHClient()
+        cli.load_system_host_keys() # 加载系统的SSH主机密钥
+        cli.set_missing_host_key_policy(AutoAddPolicy) # 如果主机密钥不存在，那么就接受新的主机密钥
+        cli.connect(self.addr, username=self.ssh_uname, password=self.ssh_upwd) # 连接SSH服务器
+        return cli
+
+    # 运行命令并返回结果
+    def run_cmd(self, cmd):
+        self.cli.send(cmd + '\n')
+        sleep(3) # 等待设备响应
+        return self.cli.recv(99999).decode() # 接收设备响应
+
+    # 从文件中读取命令并执行
+    def loop_exec(self):
+        with open('command.txt') as m:
+            m = m.readlines()
+            for cmd in m:
+                res = self.run_cmd(cmd)
+                print(res)
+                # 如果命令含'display fan'并且运行结果中没有'Normal'代表风扇全部损坏
+                if 'display fan' in cmd and res.find('Normal') == -1:
+                    print('All fans are faulty')
+
+
+    # 下载设备配置文件
+    def download_cfg(self, local_path, cfg_path='/vrpcfg.zip'):
+        print('------ Downloading config file... ------')
+        client = self._get_client()
+        sftp = client.open_sftp()  # 打开SFTP客户端
+        sftp.get(cfg_path, local_path)  # 下载文件
+        client.close()  # 关闭SSH连接
+        print('------ Config file download complete! ------')
+
+    # 备份设备配置文件
+    def conf_bak(self, device_name, cur_time):
+        download_date = cur_time.strftime('%Y_%m_%d')
+        config_filename = '{}_{}.zip'.format(download_date, device_name)
+        self.run_cmd('save force {}'.format(config_filename)) # 强制保存设备配置
+        self.download_cfg(config_filename, '/' + config_filename) # 下载配置文件
+
+    # 关闭SSH连接
+    def close(self):
+        self.client.close()
+
+class Nc:
+    # 初始化函数，创建一个netconf连接
+    def __init__(self, device_addr, nc_uname, nc_upwd, log_server):
+        self.device_addr = device_addr
+        self.nc_uname = nc_uname
+        self.nc_upwd = nc_upwd
+        self.log_server = log_server
+        self.conn = self._get_conn()
+
+    # 创建并返回一个netconf连接
+    def _get_conn(self):
+        conn = manager.connect_ssh(
+            host=self.device_addr,
+            username=self.nc_uname,
+            password=self.nc_upwd,
+            hostkey_verify=False,  # 不进行主机密钥验证
+            device_params={'name': 'huaweiyang'}) # 设备参数
+        return conn
+
+    # 执行netconf命令
+    def exec_cmd(self, format_xml):
+        self.conn.rpc(to_ele(format_xml))
+
+    # 设置远程日志服务器
+    def set_rhost(self):
+        print('------ Syslog rhost start setting ... ------')
+        xml = """
+                <edit-config>
+                    <target>
+                    <running/>
+                    </target>
+                    <config>
+                    <syslog:syslog xmlns:syslog="urn:ietf:params:xml:ns:yang:ietf-syslog">
+                        <syslog:log-actions>
+                        <syslog:remote>
+                            <syslog:destination>
+                            <syslog:name>syslog-host</syslog:name>
+                            <syslog:udp>
+                                <syslog:address>{}</syslog:address>
+                                <syslog:port>43</syslog:port>
+                            </syslog:udp>
+                            <syslog:destination-facility xmlns:ietf-syslog-types="urn:ietf:params:xml:ns:yang:ietf-syslog-types">ietf-syslog-types:local0</syslog:destination-facility>
+                            </syslog:destination>
+                        </syslog:remote>
+                        </syslog:log-actions>
+                    </syslog:syslog>
+                    </config>
+                </edit-config>
+            """
+        format_xml = xml.format(self.log_server)
+        self.exec_cmd(format_xml)
+        print('------ Successfully set syslog host ! ------')
+
+    # 关闭netconf连接
+    def close(self):
+        self.conn.close_session()
+
+# 运行设备监控和配置备份
+def run(device_name, device_addr,  nc_uname, nc_upwd, log_serv, ssh_uname, ssh_upwd):
+    nc = Nc(device_addr, nc_uname, nc_upwd, log_serv)
+    nc.set_rhost() # 设置远程日志服务器
+    nc.close() # 关闭netconf连接
+    try:
+        while True: # 持续监控设备
+            dc = Dc(device_addr, ssh_uname, ssh_upwd)
+            dc.loop_exec() # 执行设备命令
+            cur_time = datetime.now() # 获取当前时间
+            try:
+                if cur_time - last_downloadtime >= timedelta(days=1): # 如果距离上次备份已经过去一天
+                    dc.conf_bak(device_name, cur_time) # 备份设备配置
+                    nc = Nc(device_addr, nc_uname, nc_upwd, log_serv)
+                    nc.syn_time() # 同步时间
+                    nc.close() # 关闭netconf连接
+            except NameError: # 如果还没有备份过
+                dc.conf_bak(device_name, cur_time) # 备份设备配置
+                nc = Nc(device_addr, nc_uname, nc_upwd, log_serv)
+                nc.syn_time() # 同步时间
+                    nc.close() # 关闭netconf连接
+                last_downloadtime = cur_time
+            dc.close() # 关闭SSH连接
+            sleep(5 * 60) # 每5分钟执行一次
+    except Exception as e:
+        print('Stoped by{}'.format(e)) # 如果出现异常，打印异常信息
+
+# 定义设备名称、地址、登录用户名、密码等信息
+device_name = 'X_T1_AGG1'
+device_addr = '10.1.0.6'
+ssh_uname = 'python'
+ssh_upwd = 'Huawei@123'
+
+log_serv = '10.1.60.2'
+nc_uname = 'netconf'
+nc_upwd = 'Huawei@123'
+
+# 如果该脚本文件被当作主程序运行，那么执行下面的代码
+if __name__ == '__main__':
+    try:
+        # 启动设备监控和配置备份
+        run(device_name, device_addr, nc_uname, nc_upwd, log_serv, ssh_uname, ssh_upwd)
+    except KeyboardInterrupt:
+        # 如果用户键入中断命令（比如Ctrl+C），那么停止监控，并打印信息
+        print('Monitoring had stopped.')
